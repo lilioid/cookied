@@ -1,0 +1,10 @@
+[package]
+name = "cookied"
+description = "An RFC865 quote-of-the-day server"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+clap = { version = "4.5.32", features = ["derive"] }
+time = { version = "0.3.39", features = ["formatting"] }
+tokio = { version = "1.44.1", features = ["rt", "net", "io-util", "macros"] }
