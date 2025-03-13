@@ -3,9 +3,13 @@
 *cookied* is a small server program designed to supply a user with quotes of the day based on RFC 865.
 A quote of the day service is specified as a useful debugging and measurement tool which simply sends a short message without regard to its input.
 
-This software is named *cookied* because the accompanying DHCP-Option (with the option-code 8) is called the *Cookie Server Option
-* which is how I even found the RFC.
+This software is named *cookied* because the accompanying DHCP-Option (with the option-code 8) is called the *Cookie Server Option* which is how I even found the RFC.
 I also just really like cookies so the name stuck.
+
+## Quick Links
+
+- [Canonical Repository](https://codeberg.org/lilly/cookied)
+- [GitHub Mirror](https://github.com/lilioid/cookied)
 
 ## How to run
 
@@ -15,7 +19,7 @@ Note that the server expects file descriptors to be passed to it (also known as 
 ```bash
 systemd-socket-activate -l 127.0.0.1:17 cookied
 # or
-systemfd -s tcp::127.0.0.1:17 -s udp::127.0.0.1:17 -- ./target/debug/cookied
+systemfd -s tcp::127.0.0.1:17 -s udp::127.0.0.1:17 -- cookied
 ```
 
 The server accepts the following commandline arguments:
