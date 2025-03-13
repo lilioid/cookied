@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use anyhow::Context;
 use clap::Parser;
 use listenfd::ListenFd;
 use time::format_description;
@@ -14,16 +15,17 @@ use tokio::task::JoinHandle;
 mod cli;
 
 #[tokio::main(flavor = "current_thread")]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     let cli = Arc::new(cli::Cli::parse());
-    let join_handles = take_listeners(cli);
+    let join_handles = take_listeners(cli)?;
     for i in join_handles {
         let _ = tokio::join!(i);
     }
+    Ok(())
 }
 
 /// Take listeners from the environment (passed via systemd socket-activation or systemfd)
-fn take_listeners(cli: Arc<cli::Cli>) -> Vec<JoinHandle<()>> {
+fn take_listeners(cli: Arc<cli::Cli>) -> anyhow::Result<Vec<JoinHandle<()>>> {
     let mut join_handles = Vec::new();
 
     // take sockets from environment first
@@ -33,31 +35,31 @@ fn take_listeners(cli: Arc<cli::Cli>) -> Vec<JoinHandle<()>> {
 
         // tcp
         if let Ok(Some(listener)) = env_fds.take_tcp_listener(i) {
-            eprintln!(
-                "Handling TCP listener on {} passed from environment",
-                listener.local_addr().unwrap()
-            );
-            listener.set_nonblocking(true).unwrap();
-            let listener = TcpListener::from_std(listener).unwrap();
+            eprintln!("Handling TCP listener on {}", listener.local_addr()?);
+            listener
+                .set_nonblocking(true)
+                .context("Could not configure passed socket for nonblocking IO")?;
+            let listener = TcpListener::from_std(listener)
+                .context("Could not convert stdlib socket into tokio socket")?;
             join_handles.push(tokio::spawn(async move {
                 handle_tcp_listener(cli, listener).await
             }));
         }
         // udp
         else if let Ok(Some(socket)) = env_fds.take_udp_socket(i) {
-            eprintln!(
-                "Handling UDP socket on {} passed from environment",
-                socket.local_addr().unwrap()
-            );
-            socket.set_nonblocking(true).unwrap();
-            let socket = UdpSocket::from_std(socket).unwrap();
+            eprintln!("Handling UDP socket on {}", socket.local_addr()?);
+            socket
+                .set_nonblocking(true)
+                .context("Could not configure passed socket for nonblocking IO")?;
+            let socket = UdpSocket::from_std(socket)
+                .context("Could not convert stdlib socket into tokio socket")?;
             join_handles.push(tokio::spawn(
                 async move { handle_udp_socket(cli, socket).await },
             ))
         }
     }
 
-    join_handles
+    Ok(join_handles)
 }
 
 async fn handle_tcp_listener(cli: Arc<cli::Cli>, listener: TcpListener) {
@@ -68,16 +70,11 @@ async fn handle_tcp_listener(cli: Arc<cli::Cli>, listener: TcpListener) {
                 eprintln!("Could not accept incoming connection: {}", e);
             }
             Ok((mut stream, remote_addr)) => {
-                eprintln!("New connection from {remote_addr}");
+                eprintln!("Sending quote of the day to tcp://{remote_addr}");
                 let quote = generate_quote(&cli, &remote_addr);
-                eprintln!("Sending quote to {remote_addr}");
-                stream
-                    .write_all(quote.as_bytes())
-                    .await
-                    .expect("Could not write quote to remote client");
-                eprintln!("Closing connection to {remote_addr}");
-                stream.flush().await.unwrap();
-                stream.shutdown().await.unwrap();
+                if let Err(e) = stream.write_all(quote.as_bytes()).await {
+                    eprintln!("Could not send quote to tcp://{remote_addr}: {e}");
+                }
             }
         }
     }
@@ -90,13 +87,11 @@ async fn handle_udp_socket(cli: Arc<cli::Cli>, socket: UdpSocket) {
             .recv_from(&mut recv_buf)
             .await
             .expect("Could not receive UDP datagram");
-        eprintln!("Received datagram from {remote_addr}");
+        eprintln!("Sending quote of the day to udp://{remote_addr}");
         let quote = generate_quote(&cli, &remote_addr);
-        eprintln!("Sending quote to {remote_addr}");
-        socket
-            .send_to(quote.as_bytes(), remote_addr)
-            .await
-            .expect("Could not send response UDP datagram");
+        if let Err(e) = socket.send_to(quote.as_bytes(), remote_addr).await {
+            eprintln!("Could not send quote to udp://{remote_addr}: {e}");
+        }
     }
 }
 

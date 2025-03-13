@@ -3,7 +3,7 @@ use clap::{Parser, ValueEnum};
 #[derive(Clone, PartialEq, Eq, Debug, Parser)]
 #[command(version, about)]
 pub struct Cli {
-    #[arg(long, value_enum, default_value = "pattern")]
+    #[arg(long, value_enum, default_value = "time-and-place")]
     pub alg: ResponseAlgorithm,
     #[arg(long, default_value = "Hello World")]
     pub text: String,
