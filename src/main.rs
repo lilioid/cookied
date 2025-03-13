@@ -2,33 +2,65 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use clap::Parser;
+use listenfd::ListenFd;
 use time::format_description;
 use time::OffsetDateTime;
 use time::UtcOffset;
 use tokio::io::AsyncWriteExt;
 use tokio::net::TcpListener;
 use tokio::net::UdpSocket;
+use tokio::task::JoinHandle;
 
 mod cli;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
     let cli = Arc::new(cli::Cli::parse());
-    let join_tcp = tokio::spawn({
-        let cli = cli.clone();
-        async move { listen_tcp(cli).await }
-    });
-    let join_udp = tokio::spawn(async move { listen_udp(cli).await });
-
-    let _ = tokio::join!(join_tcp, join_udp);
+    let join_handles = take_listeners(cli);
+    for i in join_handles {
+        let _ = tokio::join!(i);
+    }
 }
 
-async fn listen_tcp(cli: Arc<cli::Cli>) {
-    eprintln!("Listening on tcp {}:{}", cli.bind, cli.port);
-    let listener = TcpListener::bind((cli.bind, cli.port))
-        .await
-        .expect("Could not bind to TCP socket");
+/// Take listeners from the environment (passed via systemd socket-activation or systemfd)
+fn take_listeners(cli: Arc<cli::Cli>) -> Vec<JoinHandle<()>> {
+    let mut join_handles = Vec::new();
 
+    // take sockets from environment first
+    let mut env_fds = ListenFd::from_env();
+    for i in 0..env_fds.len() {
+        let cli = cli.clone();
+
+        // tcp
+        if let Ok(Some(listener)) = env_fds.take_tcp_listener(i) {
+            eprintln!(
+                "Handling TCP listener on {} passed from environment",
+                listener.local_addr().unwrap()
+            );
+            listener.set_nonblocking(true).unwrap();
+            let listener = TcpListener::from_std(listener).unwrap();
+            join_handles.push(tokio::spawn(async move {
+                handle_tcp_listener(cli, listener).await
+            }));
+        }
+        // udp
+        else if let Ok(Some(socket)) = env_fds.take_udp_socket(i) {
+            eprintln!(
+                "Handling UDP socket on {} passed from environment",
+                socket.local_addr().unwrap()
+            );
+            socket.set_nonblocking(true).unwrap();
+            let socket = UdpSocket::from_std(socket).unwrap();
+            join_handles.push(tokio::spawn(
+                async move { handle_udp_socket(cli, socket).await },
+            ))
+        }
+    }
+
+    join_handles
+}
+
+async fn handle_tcp_listener(cli: Arc<cli::Cli>, listener: TcpListener) {
     loop {
         let incoming = listener.accept().await;
         match incoming {
@@ -49,11 +81,7 @@ async fn listen_tcp(cli: Arc<cli::Cli>) {
     }
 }
 
-async fn listen_udp(cli: Arc<cli::Cli>) {
-    eprintln!("Listening on udp {}:{}", cli.bind, cli.port);
-    let socket = UdpSocket::bind((cli.bind, cli.port))
-        .await
-        .expect("Could not bind UDP socket");
+async fn handle_udp_socket(cli: Arc<cli::Cli>, socket: UdpSocket) {
     let mut recv_buf = [0u8; 1024];
     loop {
         let (_, remote_addr) = socket

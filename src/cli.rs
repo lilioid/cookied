@@ -1,15 +1,10 @@
 use clap::{Parser, ValueEnum};
-use std::net::IpAddr;
 
 #[derive(Clone, PartialEq, Eq, Debug, Parser)]
 #[command(version, about)]
 pub struct Cli {
     #[arg(long, value_enum, default_value = "pattern")]
     pub alg: ResponseAlgorithm,
-    #[arg(long, short, default_value = "0.0.0.0")]
-    pub bind: IpAddr,
-    #[arg(long, short, default_value = "17")]
-    pub port: u16,
     #[arg(long, default_value = "Hello World")]
     pub text: String,
 }
