@@ -75,7 +75,9 @@ async fn handle_tcp_listener(cli: Arc<cli::Cli>, listener: TcpListener) {
                     .write_all(quote.as_bytes())
                     .await
                     .expect("Could not write quote to remote client");
-                eprintln!("Closing connection to {remote_addr}")
+                eprintln!("Closing connection to {remote_addr}");
+                stream.flush().await.unwrap();
+                stream.shutdown().await.unwrap();
             }
         }
     }
