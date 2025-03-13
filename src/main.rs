@@ -50,7 +50,24 @@ async fn listen_tcp(cli: Arc<cli::Cli>) {
 }
 
 async fn listen_udp(cli: Arc<cli::Cli>) {
-    eprintln!("UDP Listener is not yet implemented");
+    eprintln!("Listening on udp {}:{}", cli.bind, cli.port);
+    let socket = UdpSocket::bind((cli.bind, cli.port))
+        .await
+        .expect("Could not bind UDP socket");
+    let mut recv_buf = [0u8; 1024];
+    loop {
+        let (_, remote_addr) = socket
+            .recv_from(&mut recv_buf)
+            .await
+            .expect("Could not receive UDP datagram");
+        eprintln!("Received datagram from {remote_addr}");
+        let quote = generate_quote(&cli, &remote_addr);
+        eprintln!("Sending quote to {remote_addr}");
+        socket
+            .send_to(quote.as_bytes(), remote_addr)
+            .await
+            .expect("Could not send response UDP datagram");
+    }
 }
 
 fn generate_quote(cli: &cli::Cli, remote_addr: &SocketAddr) -> String {
