@@ -30,6 +30,10 @@ fn take_listeners(cli: Arc<cli::Cli>) -> anyhow::Result<Vec<JoinHandle<()>>> {
 
     // take sockets from environment first
     let mut env_fds = ListenFd::from_env();
+    eprintln!(
+        "Taking {} file descriptors from the environment",
+        env_fds.len()
+    );
     for i in 0..env_fds.len() {
         let cli = cli.clone();
 

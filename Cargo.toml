@@ -1,8 +1,17 @@
 [package]
 name = "cookied"
 description = "An RFC865 quote-of-the-day server"
+authors = [ "Lilly <li@lly.sh>" ]
 version = "0.1.0"
 edition = "2021"
+readme = "README.md"
+repository = "https://codeberg.org/lilly/cookied"
+license = "MIT"
+keywords = [ "cookied", "quote", "day", "rfc865" ]
+categories = [ "command-line-utilities" ]
+
+[profile.release]
+lto = true
 
 [dependencies]
 anyhow = "1.0.97"
