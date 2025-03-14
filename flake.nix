@@ -8,15 +8,12 @@
   outputs = { self, nixpkgs }:
     let
       pkgs = import nixpkgs { system = "x86_64-linux"; };
-    in rec {
+    in {
       # packaging
+      overlays.default = import ./nix/overlay.nix;
       packages.x86_64-linux = rec {
         default = cookied;
         cookied = pkgs.callPackage ./nix/package.nix {};
-      };
-  
-      overlays.default = final: prev: {
-        cookied = packages.x86_64-linux.cookied;
       };
 
       nixosModules = rec {

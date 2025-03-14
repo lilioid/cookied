@@ -25,6 +25,8 @@ in {
 
   # implementation
   config = lib.mkIf cfg.enable {
+    nixpkgs.overlays = [ (import ./overlay.nix) ];
+  
     systemd.sockets."cookied" = {
       description = "RFC865 Quote of the Day Server";
       documentation = [ "https://codeberg.org/lilly/cookied" ];
