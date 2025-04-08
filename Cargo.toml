@@ -18,4 +18,4 @@ anyhow = "1.0.97"
 clap = { version = "4.5.32", features = ["derive"] }
 listenfd = "1.0.2"
 time = { version = "0.3.39", features = ["formatting"] }
-tokio = { version = "1.44.1", features = ["rt", "net", "io-util", "macros"] }
+tokio = { version = "1.44.2", features = ["rt", "net", "io-util", "macros"] }
