@@ -13,11 +13,13 @@ use tokio::net::UdpSocket;
 use tokio::task::JoinHandle;
 
 mod cli;
+mod telemetry;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> anyhow::Result<()> {
     let cli = Arc::new(cli::Cli::parse());
     let join_handles = take_listeners(cli)?;
+    telemetry::init()?;
     for i in join_handles {
         let _ = tokio::join!(i);
     }
@@ -69,6 +71,7 @@ fn take_listeners(cli: Arc<cli::Cli>) -> anyhow::Result<Vec<JoinHandle<()>>> {
 async fn handle_tcp_listener(cli: Arc<cli::Cli>, listener: TcpListener) {
     loop {
         let incoming = listener.accept().await;
+        telemetry::record_tcp_request();
         match incoming {
             Err(e) => {
                 eprintln!("Could not accept incoming connection: {}", e);
@@ -91,6 +94,7 @@ async fn handle_udp_socket(cli: Arc<cli::Cli>, socket: UdpSocket) {
             .recv_from(&mut recv_buf)
             .await
             .expect("Could not receive UDP datagram");
+        telemetry::record_udp_request();
         eprintln!("Sending quote of the day to udp://{remote_addr}");
         let quote = generate_quote(&cli, &remote_addr);
         if let Err(e) = socket.send_to(quote.as_bytes(), remote_addr).await {

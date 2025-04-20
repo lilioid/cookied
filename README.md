@@ -63,3 +63,8 @@ This can be viewed, for example, with netcat:
 nc 127.0.0.1 17
 ```
 
+## Metrics
+
+This service supports exposing metrics via the [OpenTelemetry](https://opentelemetry.io/) otlp protocol.
+You can configure it by setting the environment variable `OTEL_METRICS_EXPORTER` to either `otlp` or `console`.
+If *otlp* is used, the target endpoint can be configured with the variable `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT`.
