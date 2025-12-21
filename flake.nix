@@ -21,6 +21,8 @@
         cookied = import ./nix/module.nix;
       };
 
+      nixosConfigurations.cookied = import ./nix/vm.nix { flake = self; nixpkgs = nixpkgs; pkgs = pkgs; };
+
       # development utilities
       devShells.x86_64-linux.default = pkgs.mkShell {
         packages = with pkgs; [
