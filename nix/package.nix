@@ -4,7 +4,7 @@ in rustPlatform.buildRustPackage {
   pname = cargoToml.package.name;
   version = cargoToml.package.version;
 
-  src = ../.;
+  src = lib.sources.sourceByRegex ../. [ "^Cargo.toml$" "^Cargo.lock$" "^LICENSE$" "^README.md$" "^src$" "^src/.+$" ];
   cargoLock = {
     lockFile = ../Cargo.lock;
   };

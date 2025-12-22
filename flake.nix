@@ -14,6 +14,7 @@
       packages.x86_64-linux = rec {
         default = cookied;
         cookied = pkgs.callPackage ./nix/package.nix {};
+        cookied-iso = self.outputs.nixosConfigurations.cookied.config.system.build.images.iso;
       };
 
       nixosModules = rec {
